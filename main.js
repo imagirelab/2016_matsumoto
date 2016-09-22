@@ -42,87 +42,22 @@ phina.define("MainScene", {
         this.player2Label = LabelsPlayerState(this.player2, this, 600, 170);
         this.round = 1;
         this.phase = PHASE.PUTMINE;
-
         this.putPlayer = 1;
-        this.putMineNum = 0;
-        this.checkedSquares = 0;
         this.gameFinished = false;
         this.battleFinished = false;
         
         var self = this;
-        this.squares = DisplayElement().addChildTo(this);
-
-        //マスの配置
-        (SQUARE_NUM).times(function (i) {
-            var xIndex = i % BOARD_WIDTH;
-            var yIndex = Math.floor(i / BOARD_WIDTH);
-            var square = Square(i).addChildTo(self.squares);
-            square.x = BOARD_OFFSET_X + xIndex * SQUARE_SIZE;
-            square.y = BOARD_OFFSET_Y + yIndex * SQUARE_SIZE;
-                        
-            square.onpointstart = function () {
-                if (self.battleFinished)
-                    return;
-                var player;
-                switch (self.phase) {
-                    case PHASE.PUTMINE:
-                        if (self.putPlayer === 1) {
-                            //地雷数点滅
-                            self.player1Label.labelMineNum.tweener.clear();
-                            self.player1Label.labelMineNum.tweener.set({
-                                brightness: 60
-                            }).to({
-                                brightness: 100
-                            }, 300);
-                            player = self.player1;
-                        }else {
-                            //地雷数点滅
-                            self.player2Label.labelMineNum.tweener.clear();
-                            self.player2Label.labelMineNum.tweener.set({
-                                brightness: 60
-                            }).to({
-                                brightness: 100
-                            }, 300);
-                            player = self.player2;
-                        }
-                        self.putMine(this, player);
-                        break;
-                    case PHASE.MAIN:
-                        if (self.putPlayer === 1) {
-                            //スコア点滅
-                            if (!this.putMine) {
-                                self.player2Label.labelPointNum.tweener.clear();
-                                self.player2Label.labelPointNum.tweener.set({
-                                    brightness: 60
-                                }).to({
-                                    brightness: 100
-                                }, 300);
-
-                            }
-                            player = self.player2;
-
-                        } else {
-                            //スコア点滅
-                            if (!this.putMine) {
-                                self.player1Label.labelPointNum.tweener.clear();
-                                self.player1Label.labelPointNum.tweener.set({
-                                    brightness: 60
-                                }).to({
-                                    brightness: 100
-                                }, 300);
-                            }
-                            player = self.player1;
-
-                        }
-                        self.check(this, player);
-                }
-
-            };        
-        });
-
+        this.board = Board(BOARD_WIDTH, BOARD_HEIGHT, this);
         //OKボタンの配置
-        this.buttonOK = ButtonOK(320, 800).addChildTo(this);
-        this.buttonOK.fill = 'hsl(200, 20%, 60%)';
+        this.buttonOK = Button({
+            x: 320,
+            y: 800,
+            width: 120,
+            height: 50,
+            text: 'OK',
+            fill: 'hsl(200, 20%, 60%)',
+        }).addChildTo(this);
+        this.buttonOK.enabled = false;
         this.buttonOK.onpointstart = function () {
             if (!self.buttonOK.visible)
                 return;
@@ -134,8 +69,7 @@ phina.define("MainScene", {
                 player = self.player1;
             else
                 player = self.player2;
-            //地雷を置いている、かつ次ラウンド以降に置く地雷が残っている場合にOKできる
-            if(self.putMineNum >= 1 && player.mines >= ROUND_NUM - self.round)
+            if (self.buttonOK.enabled)
                 self.changePhase();
         };
 
@@ -182,178 +116,14 @@ phina.define("MainScene", {
 
     },
 
-    check: function (square, player) {
-        if (this.gameFinished)
-            return;
-        if (square != undefined && !square.checked) {
-            square.checked = true;
-            //地雷が置いてあればそこでゲーム終了
-            if (square.putMine) {
-                square.text = 'x';
-                this.gameFinished = true;
-                this.openMines();
-                return;
-            }
-            this.checkedSquares += 1;
-            player.points += 1;
-            square.text = square.mineNumAround;
-            //周りに地雷が無ければ周りのマスを自動チェック
-            if (square.mineNumAround == 0) {
-                //左側
-                //左端でない場合にチェックする
-                if (square.index % BOARD_WIDTH > 0) {
-                    this.check(this.squares.children[square.index - BOARD_WIDTH - 1], player);
-                    this.check(this.squares.children[square.index - 1], player);
-                    this.check(this.squares.children[square.index + BOARD_WIDTH - 1], player);
-                }
-                //中央
-                this.check(this.squares.children[square.index - BOARD_WIDTH], player);
-                this.check(this.squares.children[square.index + BOARD_WIDTH], player);
-                //右側
-                //右端でない場合にチェックする
-                if (square.index % BOARD_WIDTH < BOARD_WIDTH - 1) {
-                    this.check(this.squares.children[square.index - BOARD_WIDTH + 1], player);
-                    this.check(this.squares.children[square.index + 1], player);
-                    this.check(this.squares.children[square.index + BOARD_WIDTH + 1],player);
-
-                }
-            }
-
-            //地雷以外のマスが全てチェックされたらゲーム終了
-            if (this.checkedSquares >= SQUARE_NUM - this.putMineNum) {
-                this.gameFinished = true;
-                this.openMines();
-                return;
-
-            }
-
-        }
-
-    },
-
-    putMine: function (square, player) {
-        if (square.canPut)
-        {
-            if (square.putMine) {
-                square.putMine = false;
-                square.text = '';
-                player.mines += 1;
-                this.putMineNum -= 1;
-            } else if (player.mines >= 1) {
-                square.putMine = true;
-                square.text = 'x';
-                player.mines -= 1;
-                this.putMineNum += 1;
-            }
-
-        }
-        //this.updateCanPut();
-        this.getMineNumArround();
-
-        var player;
-        if (this.putPlayer === 1){
-            player = this.player1;
-        } else {
-            player = this.player2;
-        }
-        //地雷を置いている、かつ次ラウンド以降に置く地雷が残っている場合にOKできる
-        //OKできない場合はボタンの色を灰色にする
-        if(this.putMineNum >= 1 && player.mines >= ROUND_NUM - this.round)
-            this.buttonOK.fill = 'hsl(200, 80%, 60%)';
-        else
-            this.buttonOK.fill = 'hsl(200, 20%, 60%)';
-
-    },
-
-    //設置可能判定(未設定)
-    updateCanPut: function(){
-        for (var i = 0; i < BOARD_HEIGHT; i++) {
-            for (var j = 0; j < BOARD_WIDTH; j++) {
-                //this.checkCanPut(j, i);
-            }
-        }
-        /*
-        //中央のマスを設置不可に
-        var index = (SQUARE_NUM - 1) / 2;
-        this.squares.children[index].canPut = false;
-        this.squares.children[index].fill = 'hsl(200, 20%, 60%)';
-        */
-    },
-    checkCanPut: function(x, y){
-        var squares = this.squares.children;
-        var index = y * BOARD_WIDTH + x;
-        if (squares[index].putMine) {
-            return;
-        }
-        var data = CheckMineConectionData();    //地雷の繋がり判定に使うデータ
-        data.listMines.push(index);
-        this.checkMineConection(data);
-        console.log(data.listMines);
-    },
-    checkMineConection: function (data) {
-    },
-
-    getMineNumArround: function () {
-        var squares = this.squares.children;
-        for (var i = 0; i < BOARD_HEIGHT; i++){
-            for (var j = 0; j < BOARD_WIDTH; j++){
-                var index = i * BOARD_WIDTH + j;
-                squares[index].mineNumAround = 0;
-                //左側
-                //左端でない場合にチェックする
-                if (j > 0) {
-                    if (squares[index - BOARD_WIDTH - 1] != undefined
-                        && squares[index - BOARD_WIDTH - 1].putMine)
-                        squares[index].mineNumAround++;
-                    if (squares[index - 1] != undefined
-                        && squares[index - 1].putMine)
-                        squares[index].mineNumAround++;
-                    if (squares[index + BOARD_WIDTH - 1] != undefined
-                        && squares[index + BOARD_WIDTH - 1].putMine)
-                        squares[index].mineNumAround++;
-                }
-                //中央
-                if (squares[index - BOARD_WIDTH] != undefined
-                    && squares[index - BOARD_WIDTH].putMine)
-                    squares[index].mineNumAround++;
-                if (squares[index + BOARD_WIDTH] != undefined
-                    && squares[index + BOARD_WIDTH].putMine)
-                    squares[index].mineNumAround++;
-
-                //右側
-                //右端でない場合にチェックする
-                if (j < BOARD_WIDTH - 1) {
-                    if (squares[index - BOARD_WIDTH + 1] != undefined
-                        && squares[index - BOARD_WIDTH + 1].putMine)
-                        squares[index].mineNumAround++;
-                    if (squares[index + 1] != undefined
-                        && squares[index + 1].putMine)
-                        squares[index].mineNumAround++;
-                    if (squares[index + BOARD_WIDTH + 1] != undefined
-                        && squares[index + BOARD_WIDTH + 1].putMine)
-                        squares[index].mineNumAround++;
-                }
-            }
-        }
-    },
-
-    openMines: function(){
-        for(var i=0; i<SQUARE_NUM; i++){
-            if (this.squares.children[i].putMine){
-                this.squares.children[i].checked = true;
-                this.squares.children[i].text = 'x';
-
-            }
-        }
-        this.gameFinished = true;
-        this.buttonOK.visible = true;
-    },
 
     changePhase: function () {
         //マスの文字、色をリセット
-        for (var i = 0; i < SQUARE_NUM; i++) {
-            this.squares.children[i].text = '';
-            this.squares.children[i].fill = 'hsl(200, 80%, 60%)';
+        for (var i = 0; i < this.board.height; i++) {
+            for (var j = 0; j < this.board.width; j++) {
+                this.board.squares[i][j].text = '';
+                this.board.squares[i][j].fill = 'hsl(200, 80%, 60%)';
+            }
         }
 
         //フェイズ移行
@@ -384,7 +154,8 @@ phina.define("MainScene", {
                 this.phase = PHASE.PUTMINE;
                 this.buttonOK.text = 'OK';
                 this.buttonOK.fill = 'hsl(200, 20%, 60%)';
-                this.initBoard();
+                this.buttonOK.enabled = false;
+                this.board.reset();
                 this.gameFinished = false;
                 //地雷設置プレイヤーの交代
                 if (this.putPlayer === 1) {
@@ -420,22 +191,6 @@ phina.define("MainScene", {
                 }
                 break;
         }
-
-    },
-    initBoard: function () {
-        for (var i = 0; i < SQUARE_NUM; i++) {
-            this.squares.children[i].putMine = false;
-            this.putMineNum = 0;
-            this.squares.children[i].mineNumAround = 0;
-            this.squares.children[i].checked = false;
-            this.checkedSquares = 0;
-        }
-        /*
-        //中央のマスを設置不可に
-        var index = (SQUARE_NUM - 1) / 2;
-        this.squares.children[index].canPut = false;
-        this.squares.children[index].fill = 'hsl(200, 20%, 60%)';
-        */
 
     },
 });

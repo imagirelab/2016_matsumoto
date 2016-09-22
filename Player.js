@@ -4,6 +4,103 @@ phina.define('Player', {
         this.mines = mines;
         this.points = 0;
     },
+
+    putMine: function (square, game) {
+        if (square.canPut) {
+            if (square.putMine) {
+                square.putMine = false;
+                square.text = '';
+                this.mines += 1;
+                game.board.putMineNum -= 1;
+            } else if (this.mines >= 1) {
+                square.putMine = true;
+                square.text = 'x';
+                this.mines -= 1;
+                game.board.putMineNum += 1;
+            }
+
+        }
+        //this.updateCanPut();
+        game.board.getMineNumArround();
+
+        var player;
+        if (this.putPlayer === 1) {
+            player = this.player1;
+        } else {
+            player = this.player2;
+        }
+        //地雷を置いている、かつ次ラウンド以降に置く地雷が残っている場合にOKできる
+        //OKできない場合はボタンの色を灰色にする
+        if (game.board.putMineNum >= 1 && this.mines >= ROUND_NUM - game.round){
+            game.buttonOK.fill = 'hsl(200, 80%, 60%)';
+            game.buttonOK.enabled = true;
+
+        }else {
+            game.buttonOK.fill = 'hsl(200, 20%, 60%)';
+            game.buttonOK.enabled = false;
+
+        }
+
+    },
+    check: function (square, game) {
+        if (game.gameFinished)
+            return;
+        if (square != undefined && !square.checked) {
+            square.checked = true;
+            //地雷が置いてあればそこでゲーム終了
+            if (square.putMine) {
+                square.text = 'x';
+                game.gameFinished = true;
+                game.board.openMines();
+                return;
+            }
+            game.board.checkedSquares += 1;
+            this.points += 1;
+            square.text = square.mineNumAround;
+            //周りに地雷が無ければ周りのマスを自動チェック
+            var indexX = square.index % game.board.width;
+            var indexY = Math.floor(square.index / game.board.width);
+
+            if (square.mineNumAround == 0) {
+                //左側
+                if (indexX - 1 >= 0) {
+                    if(indexY - 1 >= 0)
+                        this.check(game.board.squares[indexY-1][indexX-1], game);
+                    this.check(game.board.squares[indexY][indexX - 1], game);
+                    if(indexY + 1 < game.board.height)
+                        this.check(game.board.squares[indexY + 1][indexX - 1], game);
+
+                }
+                //中央
+                if (indexY - 1 >= 0)
+                    this.check(game.board.squares[indexY-1][indexX], game);
+                if (indexY + 1 < game.board.height)
+                    this.check(game.board.squares[indexY+1][indexX], game);
+                //右側
+                if (indexX + 1 < game.board.width) {
+                    if (indexY - 1 >= 0)
+                        this.check(game.board.squares[indexY - 1][indexX + 1], game);
+                    this.check(game.board.squares[indexY][indexX + 1], game);
+                    if (indexY + 1 < game.board.height)
+                        this.check(game.board.squares[indexY + 1][indexX + 1], game);
+
+                }
+
+            }
+
+            //地雷以外のマスが全てチェックされたらゲーム終了
+            if (game.board.checkedSquares >= game.board.squareNum - game.board.putMineNum) {
+                game.gameFinished = true;
+                game.board.openMines();
+                return;
+
+            }
+
+        }
+
+    },
+
+
 });
 phina.define('LabelsPlayerState', {
     init: function (player, display, offsetX, offsetY) {
@@ -25,7 +122,7 @@ phina.define('LabelsPlayerState', {
         this.labelMines.fontSize = 32;
         this.labelMines.baseline = 'bottom';
 
-        this.labelMineNum = Label(this.player.mines).addChildTo(display);
+        this.labelMineNum = Label(player.mines).addChildTo(display);
         this.labelMineNum.origin.x = 1;
         this.labelMineNum.x = offsetX + 32;
         this.labelMineNum.y = offsetY + 32;

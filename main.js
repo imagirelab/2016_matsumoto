@@ -11,7 +11,7 @@ var MINE_NUM = 10;
 var BOARD_SIZE = SCREEN_WIDTH;
 var BOARD_OFFSET_X = 120;
 var BOARD_OFFSET_Y = 290;
-var ROUND_NUM = 2;
+var ROUND_NUM = 1;
 
 var PHASE = {
     PUTMINE: 0,
@@ -20,7 +20,7 @@ var PHASE = {
 
 var ASSETS = {
     image: {
-        pointer: 'image/pointer.png',
+        mine: 'image/mine.png',
     },
 };
 
@@ -82,6 +82,7 @@ phina.define("MainScene", {
         roundLabel.fill = '#ffffff';
         roundLabel.fontSize = 48;
         roundLabel.baseline = 'bottom';
+        roundLabel.visible = false;
         this.roundLabel = roundLabel;
 
         // ƒŠƒUƒ‹ƒgƒ‰ƒxƒ‹

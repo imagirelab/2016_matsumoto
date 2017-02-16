@@ -36,7 +36,7 @@ phina.define("MainScene", {
         });
 
         this.player1 = Player('Player1', MINE_NUM * ROUND_NUM);
-        this.player1Label = LabelsPlayerState(this.player1, this, 128, 170);
+        this.player1Label = LabelsPlayerState(this.player1, this, 132, 170);
         this.player1Label.labelName.fill = '#ff7700';
         this.player2 = Player('Player2', MINE_NUM * ROUND_NUM);
         this.player2Label = LabelsPlayerState(this.player2, this, 600, 170);
